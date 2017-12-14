@@ -8,6 +8,8 @@ const nonceStr = 'abcdef'
 let signedUrl = 'http://demo.firstzhang.com'
 let tickets = ''
 
+router.prefix('/api')
+
 router.get('/', async (ctx, next) => {
   await ctx.render('index', {
     title: 'Hello Koa 2!'

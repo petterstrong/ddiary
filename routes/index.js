@@ -4,9 +4,8 @@ const crypto = require('crypto')
 const url = require('url')
 const oapiHost = 'https://oapi.dingtalk.com'
 const nonceStr = 'abcdef'
-// const ticketClient = require('../cache/TicketCache')
+const ticketClient = require('../cache/TicketCache')
 let signedUrl = 'http://demo.firstzhang.com'
-let tickets = ''
 
 router.prefix('/api')
 
@@ -17,7 +16,7 @@ router.get('/', async (ctx, next) => {
 })
 
 router.use('/auth', async (ctx, next) => {
-  // let tickets = await ticketClient.getAsync()
+  let tickets = await getTicketCache()
   let {corpid, corpsecret} = ctx.request.body
   let timeStamp = Date.now()
   let token
@@ -54,6 +53,24 @@ router.get('/json', async (ctx, next) => {
   }
 })
 
+
+function getTicketCache () {
+  return ticketClient.getAsync('ticket').then(data => {
+    if (data) {
+      console.log('get cache')
+      return data
+    } else {
+      return false
+    }
+  })
+}
+
+function setTicketCache (ticket, expires) {
+  return ticketClient.setAsync('ticket', ticket, 'EX', expires).then(data => {
+    console.log(data, 'set cache done!')
+  })
+}
+
 function fetchToken ({corpid, corpsecret}) {
   return axios.get(`${oapiHost}/gettoken?corpid=${corpid}&corpsecret=${corpsecret}`).then(data => {
     if (!data.data.errcode) {
@@ -64,10 +81,12 @@ function fetchToken ({corpid, corpsecret}) {
 }
 
 function fetchTicket (token) {
-  return axios.get(`${oapiHost}/get_jsapi_ticket?access_token=${token}`).then(data => {
+  return axios.get(`${oapiHost}/get_jsapi_ticket?access_token=${token}`).then(async data => {
     if (!data.data.errcode) {
       console.log('fetchTicket')
-      tickets = data.data.ticket
+      let ticket = data.data.ticket
+      let expires = data.data.expires_in
+      await setTicketCache(ticket, expires)
       return data.data.ticket
     }
   })
